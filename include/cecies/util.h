@@ -75,7 +75,7 @@ static inline size_t cecies_calc_compression_bound(const size_t data_length)
 static inline size_t cecies_calc_output_buffer_needed_size(const size_t input_buffer_length, const size_t key_size)
 {
     //     1    2    3          4    5
-    return 16 + 32 + key_size + 16 + input_buffer_length;
+    return 16 + 0 + key_size + 16 + input_buffer_length;
 
     // 1:  IV (AES initialization vector)
     // 2:  Salt (for HKDF)
