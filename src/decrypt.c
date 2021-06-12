@@ -85,7 +85,7 @@ static int cecies_decrypt(const uint8_t* encrypted_data, const size_t encrypted_
     }
 
     /* -------------------------------- Modified -------------------------------- */
-    size_t olen = input_length - 16 - key_length - 16;
+    size_t olen = input_length - 16 - key_length;
     /* ------------------------------ End Modified ------------------------------ */
     // size_t olen = input_length - 16 - 32 - key_length - 16;
     
@@ -100,7 +100,10 @@ static int cecies_decrypt(const uint8_t* encrypted_data, const size_t encrypted_
     size_t private_key_bytes_length = 0, S_bytes_length = 0;
 
     mbedtls_ecp_group ecp_group;
-    mbedtls_gcm_context aes_ctx;
+    // TODO
+    /* -------------------------------- Modified -------------------------------- */
+    mbedtls_aes_context aes_ctx;
+    // mbedtls_gcm_context aes_ctx;
     mbedtls_md_context_t md_ctx;
     mbedtls_entropy_context entropy;
     mbedtls_ctr_drbg_context ctr_drbg;
@@ -111,7 +114,10 @@ static int cecies_decrypt(const uint8_t* encrypted_data, const size_t encrypted_
     mbedtls_ecp_point S;
 
     mbedtls_ecp_group_init(&ecp_group);
-    mbedtls_gcm_init(&aes_ctx);
+    // TODO:
+    /* -------------------------------- Modified -------------------------------- */
+    mbedtls_aes_init(&aes_ctx);
+    // mbedtls_gcm_init(&aes_ctx);
     mbedtls_md_init(&md_ctx);
     mbedtls_entropy_init(&entropy);
     mbedtls_ctr_drbg_init(&ctr_drbg);
@@ -141,7 +147,7 @@ static int cecies_decrypt(const uint8_t* encrypted_data, const size_t encrypted_
   /* -------------------------------- Modified -------------------------------- */
     memcpy(iv, input, 16);
     memcpy(R_bytes, input + 16 , key_length);
-    memcpy(tag, input + 16 + key_length, 16);
+    // memcpy(tag, input + 16 + key_length, 16);
 
     // salt == 0
     /* ------------------------------ End Modified ------------------------------ */
@@ -215,8 +221,12 @@ static int cecies_decrypt(const uint8_t* encrypted_data, const size_t encrypted_
         cecies_fprintf(stderr, "CECIES: HKDF failed! mbedtls_hkdf returned %d\n", ret);
         goto exit;
     }
-
-    ret = mbedtls_gcm_setkey(&aes_ctx, MBEDTLS_CIPHER_ID_AES, aes_key, 256);
+    // TODO:
+    /* -------------------------------- Modified -------------------------------- */
+    ret = mbedtls_aes_setkey_dec(&aes_ctx, aes_key, 256);
+    // ret = mbedtls_gcm_setkey(&aes_ctx, MBEDTLS_CIPHER_ID_AES, aes_key, 256);
+    
+    
     if (ret != 0)
     {
         cecies_fprintf(stderr, "CECIES: AES key setup failed! mbedtls_gcm_setkey returned %d\n", ret);
@@ -232,18 +242,23 @@ static int cecies_decrypt(const uint8_t* encrypted_data, const size_t encrypted_
 
     /* -------------------------------- Modified -------------------------------- */
 
-    ret = mbedtls_gcm_auth_decrypt( //
-            &aes_ctx, // The MbedTLS AES context pointer.
-            olen, // Length of the data blob to decrypt.
-            iv, // Initialization vector which was extracted from the ciphertext.
-            16, // Length of the IV is always 16 bytes.
-            NULL, // No additional data.
-            0, // ^
-            tag, // The GCM auth tag.
-            16, // Length of the tag.
-            input + (16 + key_length + 16), // From where to start on reading the data to decrypt (skip the ciphertext prefix of IV, Salt, Ephemeral key and auth tag).
-            decrypted // Where to write the decrypted data into.
-    );
+    // TODO:
+    // AES-CBC
+    mbedtls_aes_crypt_cbc(&aes_ctx, MBEDTLS_AES_DECRYPT, olen, iv, input + (16 + key_length), decrypted);
+    
+    // AES-GCM
+    // ret = mbedtls_gcm_auth_decrypt( //
+    //         &aes_ctx, // The MbedTLS AES context pointer.
+    //         olen, // Length of the data blob to decrypt.
+    //         iv, // Initialization vector which was extracted from the ciphertext.
+    //         16, // Length of the IV is always 16 bytes.
+    //         NULL, // No additional data.
+    //         0, // ^
+    //         tag, // The GCM auth tag.
+    //         16, // Length of the tag.
+    //         input + (16 + key_length + 16), // From where to start on reading the data to decrypt (skip the ciphertext prefix of IV, Salt, Ephemeral key and auth tag).
+    //         decrypted // Where to write the decrypted data into.
+    // );
 
     /* ------------------------------ End Modified ------------------------------ */
 
@@ -310,7 +325,10 @@ static int cecies_decrypt(const uint8_t* encrypted_data, const size_t encrypted_
 exit:
 
     mbedtls_ecp_group_free(&ecp_group);
-    mbedtls_gcm_free(&aes_ctx);
+    // TODO:
+    /* -------------------------------- Modified -------------------------------- */
+    mbedtls_aes_free(&aes_ctx);
+    // mbedtls_gcm_free(&aes_ctx);
     mbedtls_md_free(&md_ctx);
     mbedtls_entropy_free(&entropy);
     mbedtls_ctr_drbg_free(&ctr_drbg);

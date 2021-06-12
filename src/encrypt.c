@@ -25,6 +25,11 @@
 #include <mbedtls/ctr_drbg.h>
 #include <mbedtls/md_internal.h>
 
+/* -------------------------------- Modified -------------------------------- */
+#include <mbedtls/aes.h>
+
+/* ------------------------------ End Modified ------------------------------ */
+
 #include <ccrush.h>
 
 #include "cecies/util.h"
@@ -74,7 +79,11 @@ static int cecies_encrypt(const uint8_t* data, const size_t data_length, const i
         return CECIES_ENCRYPT_ERROR_CODE_COMPRESSION_FAILED;
     }
 
-    mbedtls_gcm_context aes_ctx;
+    // TODO:
+    /* -------------------------------- Modified -------------------------------- */
+    mbedtls_aes_context aes_ctx;
+    /* ------------------------------ End Modified ------------------------------ */
+    // mbedtls_gcm_context aes_ctx;
     mbedtls_ecp_group ecp_group;
     mbedtls_md_context_t md_ctx;
     mbedtls_entropy_context entropy;
@@ -86,7 +95,10 @@ static int cecies_encrypt(const uint8_t* data, const size_t data_length, const i
     mbedtls_ecp_point S;
     mbedtls_ecp_point QA;
 
-    mbedtls_gcm_init(&aes_ctx);
+    // TODO:
+    /* -------------------------------- Modified -------------------------------- */
+    mbedtls_aes_init(&aes_ctx);
+    // mbedtls_gcm_init(&aes_ctx);
     mbedtls_ecp_group_init(&ecp_group);
     mbedtls_md_init(&md_ctx);
     mbedtls_entropy_init(&entropy);
@@ -218,14 +230,19 @@ static int cecies_encrypt(const uint8_t* data, const size_t data_length, const i
         goto exit;
     }
 
-    ret = mbedtls_gcm_setkey(&aes_ctx, MBEDTLS_CIPHER_ID_AES, aes_key, 256);
+    // TODO:
+    /* -------------------------------- Modified -------------------------------- */
+    ret = mbedtls_aes_setkey_enc(&aes_ctx, aes_key, 256);
+    // ret = mbedtls_gcm_setkey(&aes_ctx, MBEDTLS_CIPHER_ID_AES, aes_key, 256);
+    
+    
     if (ret != 0)
     {
         cecies_fprintf(stderr, "CECIES: AES key setup failed! mbedtls_gcm_setkey returned %d\n", ret);
         goto exit;
     }
 
-    // HERE
+    // TODO
     size_t olen = cecies_calc_output_buffer_needed_size(input_data_length, key_length);
 
     uint8_t* o = malloc(olen);
@@ -239,19 +256,33 @@ static int cecies_encrypt(const uint8_t* data, const size_t data_length, const i
     memcpy(o, iv, 16);
     memcpy(o + 16, R_bytes, R_bytes_length);
 
-    ret = mbedtls_gcm_crypt_and_tag( //
-            &aes_ctx, // MbedTLS AES context pointer.
-            MBEDTLS_GCM_ENCRYPT, // Encryption mode.
-            input_data_length, // Input data length (or compressed input data length if compression is enabled).
-            iv, // The initialization vector.
-            16, // Length of the IV.
-            NULL, // No additional data.
-            0, // ^
-            input_data, // The input data to encrypt (or compressed input data if compression is enabled).
-            o + 16 + R_bytes_length + 16, // Where to write the encrypted output bytes into: this is offset so that the order of the ciphertext prefix IV + Salt + Ephemeral Key + Tag is skipped.
-            16, // Length of the authentication tag.
-            o + 16 + R_bytes_length // Where to insert the tag bytes inside the output ciphertext.
-    );
+    // TODO:
+    // - Adicionar função de padding (ou não)
+    // - Fazer chamada ao aes_init()
+
+    // mbedtls_aes_init(), and either
+    // mbedtls_aes_setkey_enc() or mbedtls_aes_setkey_dec() must be called
+    // before the first call to this API with the same context.
+
+    // AES-CBC
+    mbedtls_aes_crypt_cbc(&aes_ctx, MBEDTLS_AES_ENCRYPT, 32, iv, input_data, o + 16 + R_bytes_length);
+
+    // TODO
+    // AES-GCM
+    
+    // ret = mbedtls_gcm_crypt_and_tag( //
+    //         &aes_ctx, // MbedTLS AES context pointer.
+    //         MBEDTLS_GCM_ENCRYPT, // Encryption mode.
+    //         input_data_length, // Input data length (or compressed input data length if compression is enabled).
+    //         iv, // The initialization vector.
+    //         16, // Length of the IV.
+    //         NULL, // No additional data.
+    //         0, // ^
+    //         input_data, // The input data to encrypt (or compressed input data if compression is enabled).
+    //         o + 16 + R_bytes_length + 16, // Where to write the encrypted output bytes into: this is offset so that the order of the ciphertext prefix IV + Salt + Ephemeral Key + Tag is skipped.
+    //         16, // Length of the authentication tag.
+    //         o + 16 + R_bytes_length // Where to insert the tag bytes inside the output ciphertext.
+    // );
 
 
     /* ------------------------------ End Modified ------------------------------ */
@@ -313,7 +344,10 @@ static int cecies_encrypt(const uint8_t* data, const size_t data_length, const i
 
 exit:
 
-    mbedtls_gcm_free(&aes_ctx);
+    // TODO:
+    /* -------------------------------- Modified -------------------------------- */
+    mbedtls_aes_free(&aes_ctx);
+    // mbedtls_gcm_free(&aes_ctx);
     mbedtls_ecp_group_free(&ecp_group);
     mbedtls_md_free(&md_ctx);
     mbedtls_entropy_free(&entropy);
