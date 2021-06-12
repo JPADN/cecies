@@ -211,7 +211,7 @@ static int cecies_encrypt(const uint8_t* data, const size_t data_length, const i
     }
 
     // Salt: An optional salt value (a non-secret random value); if the salt is not provided, a string of all zeros of md.size length is used as the salt.  
-    ret = mbedtls_hkdf(mbedtls_md_info_from_type(MBEDTLS_MD_SHA512), NULL, 32, S_bytes, S_bytes_length, NULL, 0, aes_key, 32);
+    ret = mbedtls_hkdf(mbedtls_md_info_from_type(MBEDTLS_MD_SHA512), NULL, 0, S_bytes, S_bytes_length, NULL, 0, aes_key, 32);
     if (ret != 0 || memcmp(aes_key, empty32, 32) == 0)
     {
         cecies_fprintf(stderr, "CECIES: HKDF failed! mbedtls_hkdf returned %d\n", ret);

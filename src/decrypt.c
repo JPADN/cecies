@@ -39,7 +39,10 @@
  */
 static int cecies_decrypt(const uint8_t* encrypted_data, const size_t encrypted_data_length, const int encrypted_data_base64, char* private_key, uint8_t** output, size_t* output_length, const int curve)
 {
-    const size_t min_data_len = curve == 0 ? 97 : 121;
+    /* -------------------------------- Modified -------------------------------- */
+    // Removed constraint... (it was expecting a salt)
+    const size_t min_data_len = curve == 0 ? 0 : 0;
+    /* ------------------------------ End modified ------------------------------ */
     const size_t key_length = curve == 0 ? CECIES_X25519_KEY_SIZE : CECIES_X448_KEY_SIZE;
 
     if (encrypted_data == NULL || output == NULL || output_length == NULL || private_key == NULL)
@@ -81,8 +84,11 @@ static int cecies_decrypt(const uint8_t* encrypted_data, const size_t encrypted_
         }
     }
 
-    size_t olen = input_length - 16 - 32 - key_length - 16;
-
+    /* -------------------------------- Modified -------------------------------- */
+    size_t olen = input_length - 16 - key_length - 16;
+    /* ------------------------------ End Modified ------------------------------ */
+    // size_t olen = input_length - 16 - 32 - key_length - 16;
+    
     uint8_t iv[16] = { 0x00 };
     uint8_t tag[16] = { 0x00 };
     uint8_t salt[32] = { 0x00 };
@@ -132,10 +138,18 @@ static int cecies_decrypt(const uint8_t* encrypted_data, const size_t encrypted_
         goto exit;
     }
 
+  /* -------------------------------- Modified -------------------------------- */
     memcpy(iv, input, 16);
-    memcpy(salt, input + 16, 32);
-    memcpy(R_bytes, input + 16 + 32, key_length);
-    memcpy(tag, input + 16 + 32 + key_length, 16);
+    memcpy(R_bytes, input + 16 , key_length);
+    memcpy(tag, input + 16 + key_length, 16);
+
+    // salt == 0
+    /* ------------------------------ End Modified ------------------------------ */
+    // memcpy(iv, input, 16);
+    // memcpy(salt, input + 16, 32);
+    // memcpy(R_bytes, input + 16 + 32, key_length);
+    // memcpy(tag, input + 16 + 32 + key_length, 16);
+
 
     ret = cecies_hexstr2bin(private_key, key_length * 2, private_key_bytes, sizeof(private_key_bytes), &private_key_bytes_length);
     if (ret != 0 || private_key_bytes_length != key_length)
@@ -193,8 +207,9 @@ static int cecies_decrypt(const uint8_t* encrypted_data, const size_t encrypted_
         cecies_fprintf(stderr, "CECIES: MbedTLS MD context (SHA512) setup failed! mbedtls_md_setup returned %d\n", ret);
         goto exit;
     }
-
-    ret = mbedtls_hkdf(mbedtls_md_info_from_type(MBEDTLS_MD_SHA512), salt, 32, S_bytes, S_bytes_length, NULL, 0, aes_key, 32);
+    /* -------------------------------- Modified -------------------------------- */
+    ret = mbedtls_hkdf(mbedtls_md_info_from_type(MBEDTLS_MD_SHA512), NULL, 0, S_bytes, S_bytes_length, NULL, 0, aes_key, 32);
+    /* ------------------------------ End Modified ------------------------------ */
     if (ret != 0 || memcmp(aes_key, empty32, 32) == 0)
     {
         cecies_fprintf(stderr, "CECIES: HKDF failed! mbedtls_hkdf returned %d\n", ret);
@@ -215,6 +230,8 @@ static int cecies_decrypt(const uint8_t* encrypted_data, const size_t encrypted_
         goto exit;
     }
 
+    /* -------------------------------- Modified -------------------------------- */
+
     ret = mbedtls_gcm_auth_decrypt( //
             &aes_ctx, // The MbedTLS AES context pointer.
             olen, // Length of the data blob to decrypt.
@@ -224,9 +241,24 @@ static int cecies_decrypt(const uint8_t* encrypted_data, const size_t encrypted_
             0, // ^
             tag, // The GCM auth tag.
             16, // Length of the tag.
-            input + (16 + 32 + key_length + 16), // From where to start on reading the data to decrypt (skip the ciphertext prefix of IV, Salt, Ephemeral key and auth tag).
+            input + (16 + key_length + 16), // From where to start on reading the data to decrypt (skip the ciphertext prefix of IV, Salt, Ephemeral key and auth tag).
             decrypted // Where to write the decrypted data into.
     );
+
+    /* ------------------------------ End Modified ------------------------------ */
+
+    // ret = mbedtls_gcm_auth_decrypt( //
+    //         &aes_ctx, // The MbedTLS AES context pointer.
+    //         olen, // Length of the data blob to decrypt.
+    //         iv, // Initialization vector which was extracted from the ciphertext.
+    //         16, // Length of the IV is always 16 bytes.
+    //         NULL, // No additional data.
+    //         0, // ^
+    //         tag, // The GCM auth tag.
+    //         16, // Length of the tag.
+    //         input + (16 + 32 + key_length + 16), // From where to start on reading the data to decrypt (skip the ciphertext prefix of IV, Salt, Ephemeral key and auth tag).
+    //         decrypted // Where to write the decrypted data into.
+    // );
 
     if (ret != 0)
     {
