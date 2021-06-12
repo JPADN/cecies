@@ -85,7 +85,7 @@ static int cecies_decrypt(const uint8_t* encrypted_data, const size_t encrypted_
     }
 
     /* -------------------------------- Modified -------------------------------- */
-    size_t olen = input_length - 16 - key_length;
+    size_t olen = input_length - 8 - key_length - 8;
     /* ------------------------------ End Modified ------------------------------ */
     // size_t olen = input_length - 16 - 32 - key_length - 16;
     
@@ -145,8 +145,9 @@ static int cecies_decrypt(const uint8_t* encrypted_data, const size_t encrypted_
     }
 
   /* -------------------------------- Modified -------------------------------- */
-    memcpy(iv, input, 16);
-    memcpy(R_bytes, input + 16 , key_length);
+    memcpy(iv, input, 8);
+    memcpy(iv+8, input + 40, 8);
+    memcpy(R_bytes, input + 8, key_length);
     // memcpy(tag, input + 16 + key_length, 16);
 
     // salt == 0
@@ -244,7 +245,7 @@ static int cecies_decrypt(const uint8_t* encrypted_data, const size_t encrypted_
 
     // TODO:
     // AES-CBC
-    mbedtls_aes_crypt_cbc(&aes_ctx, MBEDTLS_AES_DECRYPT, olen, iv, input + (16 + key_length), decrypted);
+    mbedtls_aes_crypt_cbc(&aes_ctx, MBEDTLS_AES_DECRYPT, olen, iv, input + (8 + key_length + 8), decrypted);
     
     // AES-GCM
     // ret = mbedtls_gcm_auth_decrypt( //

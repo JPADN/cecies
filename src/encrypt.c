@@ -215,6 +215,46 @@ static int cecies_encrypt(const uint8_t* data, const size_t data_length, const i
         goto exit;
     }
 
+    /* -------------------------------- Modified -------------------------------- */
+    printf("BEFORE: iv:\n");
+    for (int i = 0; i < 16; i++) {
+      printf("%02x", iv[i]);
+    }
+    printf("\n");
+    iv[0] = iv[0] & 0x7f;
+    iv[8] = iv[8] | 0x80;
+
+    // fhalf_iv[0] = fhalf_iv[0] & 0x7f;
+    // shalf_iv[0] = shalf_iv[0] | 0x80;
+
+    uint8_t fhalf_iv[8] = { 0x00 };
+    uint8_t shalf_iv[8] = { 0x00 };
+
+    memcpy(fhalf_iv, iv, 8);
+    memcpy(shalf_iv, iv+8, 8);
+
+    printf("AFTER: iv: \n");
+    for (int i = 0; i < 16; i++) {
+      printf("%02x", iv[i]);
+    }
+    printf("\n");
+    printf("fhalf_iv: \n");
+    for (int i = 0; i < 8; i++) {
+      printf("%02x", fhalf_iv[i]);
+    }
+    printf("\n");
+
+    printf("shalf_iv:\n");
+    for (int i = 0; i < 8; i++) {
+      printf("%02x", shalf_iv[i]);
+    }
+    printf("\n");
+
+    printf("sizeof(fhalf_iv): %ld\n", sizeof(fhalf_iv));
+    printf("\n");
+
+    /* ------------------------------ End Modified ------------------------------ */
+
     ret = mbedtls_md_setup(&md_ctx, mbedtls_md_info_from_type(MBEDTLS_MD_SHA512), 1);
     if (ret != 0)
     {
@@ -253,19 +293,15 @@ static int cecies_encrypt(const uint8_t* data, const size_t data_length, const i
     }
 
     /* -------------------------------- Modified -------------------------------- */
-    memcpy(o, iv, 16);
-    memcpy(o + 16, R_bytes, R_bytes_length);
+    memcpy(o, fhalf_iv, 8);
+    memcpy(o + 8, R_bytes, R_bytes_length);
+    memcpy(o + 8 + R_bytes_length, shalf_iv, 8);
 
     // TODO:
     // - Adicionar função de padding (ou não)
-    // - Fazer chamada ao aes_init()
-
-    // mbedtls_aes_init(), and either
-    // mbedtls_aes_setkey_enc() or mbedtls_aes_setkey_dec() must be called
-    // before the first call to this API with the same context.
 
     // AES-CBC
-    mbedtls_aes_crypt_cbc(&aes_ctx, MBEDTLS_AES_ENCRYPT, 32, iv, input_data, o + 16 + R_bytes_length);
+    mbedtls_aes_crypt_cbc(&aes_ctx, MBEDTLS_AES_ENCRYPT, 32, iv, input_data, o + 8 + R_bytes_length + 8);
 
     // TODO
     // AES-GCM
@@ -358,6 +394,8 @@ exit:
     mbedtls_ecp_point_free(&QA);
 
     mbedtls_platform_zeroize(iv, sizeof(iv));
+    mbedtls_platform_zeroize(fhalf_iv, sizeof(fhalf_iv));
+    mbedtls_platform_zeroize(shalf_iv, sizeof(shalf_iv)); // TODO: sizeof ???
     mbedtls_platform_zeroize(salt, sizeof(salt));
     mbedtls_platform_zeroize(pers, sizeof(pers));
     mbedtls_platform_zeroize(aes_key, sizeof(aes_key));
