@@ -216,11 +216,7 @@ static int cecies_encrypt(const uint8_t* data, const size_t data_length, const i
     }
 
     /* -------------------------------- Modified -------------------------------- */
-    printf("BEFORE: iv:\n");
-    for (int i = 0; i < 16; i++) {
-      printf("%02x", iv[i]);
-    }
-    printf("\n");
+    
     iv[0] = iv[0] & 0x7f;
     iv[8] = iv[8] | 0x80;
 
@@ -232,26 +228,6 @@ static int cecies_encrypt(const uint8_t* data, const size_t data_length, const i
 
     memcpy(fhalf_iv, iv, 8);
     memcpy(shalf_iv, iv+8, 8);
-
-    printf("AFTER: iv: \n");
-    for (int i = 0; i < 16; i++) {
-      printf("%02x", iv[i]);
-    }
-    printf("\n");
-    printf("fhalf_iv: \n");
-    for (int i = 0; i < 8; i++) {
-      printf("%02x", fhalf_iv[i]);
-    }
-    printf("\n");
-
-    printf("shalf_iv:\n");
-    for (int i = 0; i < 8; i++) {
-      printf("%02x", shalf_iv[i]);
-    }
-    printf("\n");
-
-    printf("sizeof(fhalf_iv): %ld\n", sizeof(fhalf_iv));
-    printf("\n");
 
     /* ------------------------------ End Modified ------------------------------ */
 
